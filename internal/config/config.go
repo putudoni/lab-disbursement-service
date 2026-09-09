@@ -7,6 +7,7 @@ type Config struct {
 	HTTPPort int
 
 	Database DatabaseConfig
+	PGProvider PGProviderConfig
 }
 
 type DatabaseConfig struct {
@@ -17,4 +18,16 @@ type DatabaseConfig struct {
 	Name     string
 	SSLMode  string
 	Timezone string
+}
+
+type PGProviderConfig struct {
+	Mode string
+	Live PGProviderCredentials
+	Mock PGProviderCredentials
+}
+
+type PGProviderCredentials struct {
+	APIKey    string
+	APISecret string
+	BaseURL   string
 }

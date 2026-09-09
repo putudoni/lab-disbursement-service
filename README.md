@@ -1,1 +1,1 @@
-# This lab repo demonstrates a simple loan disbursement workflow using the GoFr framework
+### This lab repo demonstrates a simple loan disbursement workflow using the GoFr framework
