@@ -35,7 +35,7 @@ type BankAccount struct {
 }
 
 const (
-	ValidationStatusPending     = "pending"
-	ValidationStatusValidated   = "validated"
-	ValidationStatusFailed      = "validation_failed"
+	ValidationStatusPending   = "pending"
+	ValidationStatusValidated = "validated"
+	ValidationStatusInvalid   = "invalid"
 )

@@ -4,17 +4,22 @@ import (
 	"context"
 
 	"lab-disbursement-service/internal/model"
-	"lab-disbursement-service/internal/repository"
 	"lab-disbursement-service/pkg/pg_provider"
 )
 
+type bankAccountRepository interface {
+	FindPendingValidation() ([]model.BankAccount, error)
+	UpdateValidationStatus(id int64, status string, validationID string) error
+	FindByID(id int64) (*model.BankAccount, error)
+}
+
 type BankAccountValidationService struct {
-	repo      *repository.BankAccountRepository
+	repo      bankAccountRepository
 	validator pg_provider.BankAccountValidator
 }
 
 func NewBankAccountValidationService(
-	repo *repository.BankAccountRepository,
+	repo bankAccountRepository,
 	validator pg_provider.BankAccountValidator,
 ) *BankAccountValidationService {
 	return &BankAccountValidationService{
@@ -30,6 +35,10 @@ func (s *BankAccountValidationService) ProcessPendingValidations(ctx context.Con
 	}
 
 	for _, acc := range accounts {
+		if acc.ValidationStatus != model.ValidationStatusPending {
+			continue
+		}
+
 		s.validateAccount(ctx, acc)
 	}
 
@@ -49,14 +58,14 @@ func (s *BankAccountValidationService) validateAccount(ctx context.Context, acc 
 
 	resp, err := s.validator.Validate(ctx, req)
 	if err != nil {
-		_ = s.repo.UpdateValidationStatus(acc.ID, model.ValidationStatusFailed, "")
+		_ = s.repo.UpdateValidationStatus(acc.ID, model.ValidationStatusInvalid, "")
 		return
 	}
 
-	switch resp.Status {
-	case "verified":
+	if resp.Status == "verified" {
 		_ = s.repo.UpdateValidationStatus(acc.ID, model.ValidationStatusValidated, resp.ID)
-	default:
-		_ = s.repo.UpdateValidationStatus(acc.ID, model.ValidationStatusFailed, resp.ID)
+		return
 	}
+
+	_ = s.repo.UpdateValidationStatus(acc.ID, model.ValidationStatusInvalid, resp.ID)
 }
