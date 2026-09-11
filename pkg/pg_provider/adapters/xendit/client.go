@@ -1,72 +1,59 @@
 package xendit
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"time"
+
+	"github.com/cenkalti/backoff/v5"
 )
 
 const (
-	defaultTimeout = 30 * time.Second
+	defaultTimeout     = 30 * time.Second
+	defaultRetryMax    = 2
+	defaultBaseDelay   = 500 * time.Millisecond
+	defaultMaxDelay    = 5 * time.Second
+	requestPath        = "identity/v2/bank_account_validation"
+	authorizationBasic = "Basic "
 )
 
-type Client struct {
-	config     Config
-	httpClient *http.Client
+type poster interface {
+	PostWithHeaders(ctx context.Context, path string, queryParams map[string]any, body []byte,
+		headers map[string]string) (*http.Response, error)
 }
 
-func NewClient(cfg Config) *Client {
-	if cfg.BaseURL == "" {
-		cfg.BaseURL = "https://api.xendit.co"
+type Client struct {
+	config Config
+	client poster
+}
+
+func NewClient(cfg Config, c poster) *Client {
+	if cfg.RetryMax == 0 {
+		cfg.RetryMax = defaultRetryMax
+	}
+	if cfg.RetryBaseDelay == 0 {
+		cfg.RetryBaseDelay = defaultBaseDelay
+	}
+	if cfg.RetryMaxDelay == 0 {
+		cfg.RetryMaxDelay = defaultMaxDelay
 	}
 
 	return &Client{
 		config: cfg,
-		httpClient: &http.Client{
-			Timeout: defaultTimeout,
-		},
+		client: c,
 	}
-}
-
-func (c *Client) doRequest(ctx context.Context, method, path string, body interface{}) ([]byte, int, error) {
-	var reader io.Reader
-	if body != nil {
-		payload, err := json.Marshal(body)
-		if err != nil {
-			return nil, 0, fmt.Errorf("pg_provider/xendit: marshal request body: %w", err)
-		}
-		reader = bytes.NewReader(payload)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, method, c.config.BaseURL+path, reader)
-	if err != nil {
-		return nil, 0, fmt.Errorf("pg_provider/xendit: build request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", c.basicAuth())
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, 0, fmt.Errorf("pg_provider/xendit: execute request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("pg_provider/xendit: read response body: %w", err)
-	}
-
-	return data, resp.StatusCode, nil
 }
 
 func (c *Client) basicAuth() string {
 	raw := c.config.APIKey + ":" + c.config.APISecret
-	return "Basic " + base64.StdEncoding.EncodeToString([]byte(raw))
+	return authorizationBasic + base64.StdEncoding.EncodeToString([]byte(raw))
+}
+
+func (c *Client) backoff() *backoff.ExponentialBackOff {
+	bo := backoff.NewExponentialBackOff()
+	bo.InitialInterval = c.config.RetryBaseDelay
+	bo.MaxInterval = c.config.RetryMaxDelay
+
+	return bo
 }

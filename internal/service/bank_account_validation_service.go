@@ -58,6 +58,11 @@ func (s *BankAccountValidationService) validateAccount(ctx context.Context, acc 
 
 	resp, err := s.validator.Validate(ctx, req)
 	if err != nil {
+		if pg_provider.IsTransient(err) {
+			_ = s.repo.UpdateValidationStatus(acc.ID, model.ValidationStatusError, "")
+			return
+		}
+
 		_ = s.repo.UpdateValidationStatus(acc.ID, model.ValidationStatusInvalid, "")
 		return
 	}

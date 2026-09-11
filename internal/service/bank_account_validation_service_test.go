@@ -86,7 +86,7 @@ func TestProcessPendingValidations_validAccountBecomesValidated(t *testing.T) {
 	require.Equal(t, []validationStatusUpdate{{id: 1, status: model.ValidationStatusValidated, validationID: "vid-1"}}, repo.updates)
 }
 
-func TestProcessPendingValidations_providerErrorMarksInvalid(t *testing.T) {
+func TestProcessPendingValidations_providerErrorMarksError(t *testing.T) {
 	repo := &fakeBankAccountRepository{
 		pending: []model.BankAccount{pendingAccount(2, "22222222")},
 	}
@@ -96,7 +96,22 @@ func TestProcessPendingValidations_providerErrorMarksInvalid(t *testing.T) {
 	err := svc.ProcessPendingValidations(context.Background())
 
 	require.NoError(t, err)
-	require.Equal(t, []validationStatusUpdate{{id: 2, status: model.ValidationStatusInvalid, validationID: ""}}, repo.updates)
+	require.Equal(t, []validationStatusUpdate{{id: 2, status: model.ValidationStatusError, validationID: ""}}, repo.updates)
+}
+
+func TestProcessPendingValidations_permanentErrorMarksInvalid(t *testing.T) {
+	repo := &fakeBankAccountRepository{
+		pending: []model.BankAccount{pendingAccount(4, "44444444")},
+	}
+	validator := &fakeBankAccountValidator{
+		err: &pg_provider.ProviderError{StatusCode: 404, ErrorCode: "BANK_ACCOUNT_NOT_FOUND", Message: "account not found"},
+	}
+	svc := NewBankAccountValidationService(repo, validator)
+
+	err := svc.ProcessPendingValidations(context.Background())
+
+	require.NoError(t, err)
+	require.Equal(t, []validationStatusUpdate{{id: 4, status: model.ValidationStatusInvalid, validationID: ""}}, repo.updates)
 }
 
 func TestProcessPendingValidations_unverifiedAccountMarksInvalid(t *testing.T) {
@@ -119,9 +134,11 @@ func TestProcessPendingValidations_skipsAccountsThatAlreadyHaveFinalStatus(t *te
 	validated.ValidationStatus = model.ValidationStatusValidated
 	invalid := pendingAccount(2, "22222222")
 	invalid.ValidationStatus = model.ValidationStatusInvalid
+	failed := pendingAccount(3, "33333333")
+	failed.ValidationStatus = model.ValidationStatusError
 
 	repo := &fakeBankAccountRepository{
-		pending: []model.BankAccount{validated, invalid},
+		pending: []model.BankAccount{validated, invalid, failed},
 	}
 	validator := &fakeBankAccountValidator{
 		resp: &pg_provider.BankAccountValidationResponse{ID: "vid-1", Status: "verified"},

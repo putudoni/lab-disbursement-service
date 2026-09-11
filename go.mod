@@ -4,6 +4,7 @@ go 1.25.3
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
+	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/stretchr/testify v1.11.1
 	gofr.dev v1.56.5
 	gorm.io/driver/postgres v1.5.11
@@ -22,7 +23,6 @@ require (
 	github.com/XSAM/otelsql v0.43.0 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dgraph-io/dgo/v210 v210.0.0-20230328113526-b66f8ae53a2d // indirect

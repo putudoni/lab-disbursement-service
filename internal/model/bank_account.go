@@ -38,4 +38,5 @@ const (
 	ValidationStatusPending   = "pending"
 	ValidationStatusValidated = "validated"
 	ValidationStatusInvalid   = "invalid"
+	ValidationStatusError     = "error"
 )

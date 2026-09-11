@@ -16,8 +16,9 @@ type BankAccountValidationResponse struct {
 }
 
 type ProviderError struct {
-	ErrorCode string `json:"error_code"`
-	Message   string `json:"message"`
+	StatusCode int    `json:"status_code"`
+	ErrorCode  string `json:"error_code"`
+	Message    string `json:"message"`
 }
 
 func (e *ProviderError) Error() string {
