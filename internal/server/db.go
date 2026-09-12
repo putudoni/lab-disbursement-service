@@ -4,11 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	"lab-disbursement-service/internal/model"
+)
+
+const (
+	dbConnectAttempts = 30
+	dbConnectInterval = 2 * time.Second
 )
 
 type gormConfig struct {
@@ -49,12 +55,26 @@ func (h *dbHolder) Init(cfg gormConfig) error {
 		return errors.New("database name is not configured")
 	}
 
-	db, err := gorm.Open(postgres.Open(cfg.dsn()), &gorm.Config{})
+	var (
+		db  *gorm.DB
+		err error
+	)
+
+	for attempt := 1; attempt <= dbConnectAttempts; attempt++ {
+		db, err = gorm.Open(postgres.Open(cfg.dsn()), &gorm.Config{})
+		if err == nil {
+			break
+		}
+
+		if attempt < dbConnectAttempts {
+			time.Sleep(dbConnectInterval)
+		}
+	}
 	if err != nil {
 		return err
 	}
 
-	if err := db.AutoMigrate(&model.BankAccount{}); err != nil {
+	if err := db.AutoMigrate(&model.BankAccount{}, &model.AuditLog{}); err != nil {
 		return err
 	}
 

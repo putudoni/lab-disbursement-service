@@ -32,7 +32,8 @@ func New() *gofr.App {
 	}
 
 	bankAccountRepo := repository.NewBankAccountRepository(db)
-	validationSvc := service.NewBankAccountValidationService(bankAccountRepo, validator)
+	auditRepo := repository.NewAuditTrailRepository(db)
+	validationSvc := service.NewBankAccountValidationService(bankAccountRepo, validator, auditRepo)
 
 	app.OnStart(func(ctx *gofr.Context) error {
 		return db.Init(gormCfg)

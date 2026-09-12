@@ -32,6 +32,8 @@ func getBankAccountHandler(svc *service.BankAccountValidationService) func(*gofr
 			return nil, model.ErrBankAccountNotFound
 		}
 
+		svc.RecordView(c, *account, "api:"+c.HostName(), c.GetCorrelationID())
+
 		return account, nil
 	}
 }
