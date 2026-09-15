@@ -70,7 +70,7 @@ func (f *fakeBankAccountValidator) Validate(ctx context.Context, req pg_provider
 	return f.resp, f.err
 }
 
-func pendingAccount(id int64, accountNumber string) model.BankAccount {
+func pendingBankAccount(id int64, accountNumber string) model.BankAccount {
 	return model.BankAccount{
 		ID:                id,
 		LoanID:            id * 10,
@@ -83,7 +83,7 @@ func pendingAccount(id int64, accountNumber string) model.BankAccount {
 
 func TestProcessPendingValidations_validAccountBecomesValidated(t *testing.T) {
 	repo := &fakeBankAccountRepository{
-		pending: []model.BankAccount{pendingAccount(1, "11111111")},
+		pending: []model.BankAccount{pendingBankAccount(1, "11111111")},
 	}
 	validator := &fakeBankAccountValidator{
 		resp: &pg_provider.BankAccountValidationResponse{ID: "vid-1", Status: "verified"},
@@ -102,7 +102,7 @@ func TestProcessPendingValidations_validAccountBecomesValidated(t *testing.T) {
 
 func TestProcessPendingValidations_providerErrorMarksError(t *testing.T) {
 	repo := &fakeBankAccountRepository{
-		pending: []model.BankAccount{pendingAccount(2, "22222222")},
+		pending: []model.BankAccount{pendingBankAccount(2, "22222222")},
 	}
 	validator := &fakeBankAccountValidator{err: errors.New("provider unavailable")}
 	svc := NewBankAccountValidationService(repo, validator, nil)
@@ -115,7 +115,7 @@ func TestProcessPendingValidations_providerErrorMarksError(t *testing.T) {
 
 func TestProcessPendingValidations_permanentErrorMarksInvalid(t *testing.T) {
 	repo := &fakeBankAccountRepository{
-		pending: []model.BankAccount{pendingAccount(4, "44444444")},
+		pending: []model.BankAccount{pendingBankAccount(4, "44444444")},
 	}
 	validator := &fakeBankAccountValidator{
 		err: &pg_provider.ProviderError{StatusCode: 404, ErrorCode: "BANK_ACCOUNT_NOT_FOUND", Message: "account not found"},
@@ -130,7 +130,7 @@ func TestProcessPendingValidations_permanentErrorMarksInvalid(t *testing.T) {
 
 func TestProcessPendingValidations_unverifiedAccountMarksInvalid(t *testing.T) {
 	repo := &fakeBankAccountRepository{
-		pending: []model.BankAccount{pendingAccount(3, "99999999")},
+		pending: []model.BankAccount{pendingBankAccount(3, "99999999")},
 	}
 	validator := &fakeBankAccountValidator{
 		resp: &pg_provider.BankAccountValidationResponse{ID: "vid-3", Status: "unverified"},
@@ -144,11 +144,11 @@ func TestProcessPendingValidations_unverifiedAccountMarksInvalid(t *testing.T) {
 }
 
 func TestProcessPendingValidations_skipsAccountsThatAlreadyHaveFinalStatus(t *testing.T) {
-	validated := pendingAccount(1, "11111111")
+	validated := pendingBankAccount(1, "11111111")
 	validated.ValidationStatus = model.ValidationStatusValidated
-	invalid := pendingAccount(2, "22222222")
+	invalid := pendingBankAccount(2, "22222222")
 	invalid.ValidationStatus = model.ValidationStatusInvalid
-	failed := pendingAccount(3, "33333333")
+	failed := pendingBankAccount(3, "33333333")
 	failed.ValidationStatus = model.ValidationStatusError
 
 	repo := &fakeBankAccountRepository{
@@ -182,8 +182,8 @@ func TestProcessPendingValidations_repoErrorIsReturned(t *testing.T) {
 func TestProcessPendingValidations_continuesAfterIndividualFailure(t *testing.T) {
 	repo := &fakeBankAccountRepository{
 		pending: []model.BankAccount{
-			pendingAccount(1, "11111111"),
-			pendingAccount(2, "22222222"),
+			pendingBankAccount(1, "11111111"),
+			pendingBankAccount(2, "22222222"),
 		},
 	}
 	validator := &fakeBankAccountValidator{
@@ -203,7 +203,7 @@ func TestProcessPendingValidations_continuesAfterIndividualFailure(t *testing.T)
 
 func TestGetBankAccount_found(t *testing.T) {
 	repo := &fakeBankAccountRepository{
-		byID: map[int64]*model.BankAccount{1: func() *model.BankAccount { a := pendingAccount(1, "11111111"); return &a }()},
+		byID: map[int64]*model.BankAccount{1: func() *model.BankAccount { a := pendingBankAccount(1, "11111111"); return &a }()},
 	}
 	svc := NewBankAccountValidationService(repo, &fakeBankAccountValidator{}, nil)
 
@@ -237,7 +237,7 @@ func TestGetBankAccount_repoError(t *testing.T) {
 func TestProcessPendingValidations_writesAuditTrailWithMaskedPII(t *testing.T) {
 	auditRepo := &fakeAuditTrailRepository{}
 	repo := &fakeBankAccountRepository{
-		pending: []model.BankAccount{pendingAccount(1, "11111111")},
+		pending: []model.BankAccount{pendingBankAccount(1, "11111111")},
 	}
 	validator := &fakeBankAccountValidator{
 		resp: &pg_provider.BankAccountValidationResponse{ID: "vid-1", Status: "verified"},
@@ -268,7 +268,7 @@ func TestProcessPendingValidations_writesAuditTrailWithMaskedPII(t *testing.T) {
 func TestProcessPendingValidations_writesAuditTrailOnTransientError(t *testing.T) {
 	auditRepo := &fakeAuditTrailRepository{}
 	repo := &fakeBankAccountRepository{
-		pending: []model.BankAccount{pendingAccount(2, "22222222")},
+		pending: []model.BankAccount{pendingBankAccount(2, "22222222")},
 	}
 	validator := &fakeBankAccountValidator{err: errors.New("provider unavailable")}
 	svc := NewBankAccountValidationService(repo, validator, auditRepo)
@@ -292,7 +292,7 @@ func TestProcessPendingValidations_writesAuditTrailOnTransientError(t *testing.T
 func TestGetBankAccount_writesAuditTrailOnView(t *testing.T) {
 	auditRepo := &fakeAuditTrailRepository{}
 	repo := &fakeBankAccountRepository{
-		byID: map[int64]*model.BankAccount{1: func() *model.BankAccount { a := pendingAccount(1, "1234567890"); return &a }()},
+		byID: map[int64]*model.BankAccount{1: func() *model.BankAccount { a := pendingBankAccount(1, "1234567890"); return &a }()},
 	}
 	svc := NewBankAccountValidationService(repo, &fakeBankAccountValidator{}, auditRepo)
 
@@ -318,7 +318,7 @@ func TestGetBankAccount_writesAuditTrailOnView(t *testing.T) {
 
 func TestBankAccountValidationService_nilAuditRepoIsSafe(t *testing.T) {
 	repo := &fakeBankAccountRepository{
-		pending: []model.BankAccount{pendingAccount(1, "11111111")},
+		pending: []model.BankAccount{pendingBankAccount(1, "11111111")},
 	}
 	validator := &fakeBankAccountValidator{
 		resp: &pg_provider.BankAccountValidationResponse{ID: "vid-1", Status: "verified"},
@@ -328,12 +328,4 @@ func TestBankAccountValidationService_nilAuditRepoIsSafe(t *testing.T) {
 	require.NotPanics(t, func() {
 		_ = svc.ProcessPendingValidations(context.Background())
 	})
-}
-
-func TestMaskAccountNumber(t *testing.T) {
-	require.Equal(t, "", maskAccountNumber(""))
-	require.Equal(t, "***", maskAccountNumber("123"))
-	require.Equal(t, "****", maskAccountNumber("1234"))
-	require.Equal(t, "****1111", maskAccountNumber("11111111"))
-	require.Equal(t, "******7890", maskAccountNumber("1234567890"))
 }

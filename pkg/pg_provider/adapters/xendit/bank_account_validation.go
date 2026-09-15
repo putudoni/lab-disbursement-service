@@ -20,7 +20,7 @@ func (c *Client) Validate(ctx context.Context, req pg_provider.BankAccountValida
 		return nil, pg_provider.NewLocalError("REQUEST_ERROR", fmt.Sprintf("marshal request body: %v", err))
 	}
 
-	body, statusCode, err := c.doRequest(ctx, payload)
+	body, statusCode, err := c.doRequest(ctx, requestPath, payload, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -49,15 +49,18 @@ type requestResult struct {
 	statusCode int
 }
 
-func (c *Client) doRequest(ctx context.Context, body []byte) ([]byte, int, error) {
+func (c *Client) doRequest(ctx context.Context, path string, body []byte, extraHeaders map[string]string) ([]byte, int, error) {
 	headers := map[string]string{
 		"Authorization": c.basicAuth(),
+	}
+	for k, v := range extraHeaders {
+		headers[k] = v
 	}
 
 	var permanent *pg_provider.ProviderError
 
 	result, err := backoff.Retry(ctx, func() (requestResult, error) {
-		resp, err := c.client.PostWithHeaders(ctx, requestPath, nil, body, headers)
+		resp, err := c.client.PostWithHeaders(ctx, path, nil, body, headers)
 		if err != nil {
 			return requestResult{}, err
 		}

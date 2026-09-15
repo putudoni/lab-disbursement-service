@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"strings"
 	"time"
 
 	"lab-disbursement-service/internal/model"
@@ -113,7 +112,7 @@ func (s *BankAccountValidationService) writeAudit(
 
 	payload := map[string]string{
 		"bank_code":      acc.BankCode,
-		"account_number": maskAccountNumber(acc.AccountNumber),
+		"account_number": model.MaskAccountNumber(acc.AccountNumber),
 		"from_status":    acc.ValidationStatus,
 		"to_status":      status,
 	}
@@ -135,12 +134,4 @@ func (s *BankAccountValidationService) writeAudit(
 		Payload:       string(data),
 		CreatedAt:     time.Now().UTC(),
 	})
-}
-
-func maskAccountNumber(accountNumber string) string {
-	if len(accountNumber) <= 4 {
-		return strings.Repeat("*", len(accountNumber))
-	}
-
-	return strings.Repeat("*", len(accountNumber)-4) + accountNumber[len(accountNumber)-4:]
 }

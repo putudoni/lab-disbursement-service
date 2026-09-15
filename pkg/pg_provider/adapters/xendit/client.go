@@ -15,6 +15,7 @@ const (
 	defaultBaseDelay   = 500 * time.Millisecond
 	defaultMaxDelay    = 5 * time.Second
 	requestPath        = "identity/v2/bank_account_validation"
+	disbursementPath   = "disbursements"
 	authorizationBasic = "Basic "
 )
 
@@ -46,7 +47,7 @@ func NewClient(cfg Config, c poster) *Client {
 }
 
 func (c *Client) basicAuth() string {
-	raw := c.config.APIKey + ":" + c.config.APISecret
+	raw := c.config.SecretKey + ":"
 	return authorizationBasic + base64.StdEncoding.EncodeToString([]byte(raw))
 }
 

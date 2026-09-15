@@ -35,7 +35,11 @@ func (f *fakePoster) PostWithHeaders(ctx context.Context, path string, queryPara
 	f.lastBody = body
 
 	if f.delay > 0 {
-		time.Sleep(f.delay)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(f.delay):
+		}
 	}
 
 	status := http.StatusOK
@@ -66,8 +70,7 @@ func (f *fakePoster) PostWithHeaders(ctx context.Context, path string, queryPara
 
 func newClient(f *fakePoster) *Client {
 	return NewClient(Config{
-		APIKey:         "key",
-		APISecret:      "secret",
+		SecretKey:      "xnd_development_secret",
 		RetryMax:       2,
 		RetryBaseDelay: time.Millisecond,
 		RetryMaxDelay:  time.Millisecond,
@@ -93,7 +96,7 @@ func TestValidate_success(t *testing.T) {
 	require.Equal(t, "verified", resp.Status)
 	require.Equal(t, int32(1), p.mu.Load())
 	require.Equal(t, requestPath, p.lastPath)
-	require.Equal(t, authorizationBasic+base64.StdEncoding.EncodeToString([]byte("key:secret")), p.lastHeaders["Authorization"])
+	require.Equal(t, authorizationBasic+base64.StdEncoding.EncodeToString([]byte("xnd_development_secret:")), p.lastHeaders["Authorization"])
 }
 
 func TestValidate_retriesOnServerError(t *testing.T) {

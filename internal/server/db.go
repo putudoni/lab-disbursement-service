@@ -74,7 +74,7 @@ func (h *dbHolder) Init(cfg gormConfig) error {
 		return err
 	}
 
-	if err := db.AutoMigrate(&model.BankAccount{}, &model.AuditLog{}); err != nil {
+	if err := db.AutoMigrate(&model.BankAccount{}, &model.Disbursement{}, &model.AuditLog{}); err != nil {
 		return err
 	}
 

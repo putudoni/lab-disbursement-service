@@ -3,12 +3,19 @@ package model
 import "time"
 
 const (
-	AuditEntityBankAccount = "bank_account"
+	AuditEntityBankAccount  = "bank_account"
+	AuditEntityDisbursement = "disbursement"
 
 	AuditActionValidated       = "bank_account.validated"
 	AuditActionInvalid         = "bank_account.invalid"
 	AuditActionValidationError = "bank_account.validation_error"
 	AuditActionViewed          = "bank_account.viewed"
+
+	AuditActionDisbursementProcessing = "disbursement.processing"
+	AuditActionDisbursementSuccess    = "disbursement.success"
+	AuditActionDisbursementFailed     = "disbursement.failed"
+	AuditActionDisbursementError      = "disbursement.error"
+	AuditActionDisbursementViewed     = "disbursement.viewed"
 )
 
 type AuditLog struct {

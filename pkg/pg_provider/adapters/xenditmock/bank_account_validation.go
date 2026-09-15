@@ -3,6 +3,7 @@ package xenditmock
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"lab-disbursement-service/pkg/pg_provider"
@@ -10,10 +11,13 @@ import (
 
 type Client struct {
 	config Config
+
+	mu      sync.Mutex
+	submits map[string]int
 }
 
 func NewClient(cfg Config) *Client {
-	return &Client{config: cfg}
+	return &Client{config: cfg, submits: map[string]int{}}
 }
 
 func (c *Client) Validate(ctx context.Context, req pg_provider.BankAccountValidationRequest) (*pg_provider.BankAccountValidationResponse, error) {

@@ -15,10 +15,15 @@ import (
 	"lab-disbursement-service/pkg/pg_provider/adapters/xenditmock"
 )
 
+type paymentGateway interface {
+	pg_provider.BankAccountValidator
+	pg_provider.DisbursementProvider
+}
+
 func New() *gofr.App {
 	app := gofr.New()
 
-	validator := initPGProvider(app)
+	gateway := initProvider(app)
 	db := newDBHolder()
 
 	gormCfg := gormConfig{
@@ -33,7 +38,10 @@ func New() *gofr.App {
 
 	bankAccountRepo := repository.NewBankAccountRepository(db)
 	auditRepo := repository.NewAuditTrailRepository(db)
-	validationSvc := service.NewBankAccountValidationService(bankAccountRepo, validator, auditRepo)
+	validationSvc := service.NewBankAccountValidationService(bankAccountRepo, gateway, auditRepo)
+
+	disbursementRepo := repository.NewDisbursementRepository(db)
+	disbursementSvc := service.NewDisbursementService(disbursementRepo, gateway, auditRepo)
 
 	app.OnStart(func(ctx *gofr.Context) error {
 		return db.Init(gormCfg)
@@ -42,12 +50,15 @@ func New() *gofr.App {
 	validationJob := job.NewBankAccountValidationJob(validationSvc)
 	app.AddCronJob("*/5 * * * * *", "bank_account_validation", validationJob.Run)
 
-	registerRoutes(app, validationSvc)
+	disbursementJob := job.NewDisbursementJob(disbursementSvc)
+	app.AddCronJob("*/5 * * * * *", "disbursement", disbursementJob.Run)
+
+	registerRoutes(app, validationSvc, disbursementSvc)
 
 	return app
 }
 
-func initPGProvider(app *gofr.App) pg_provider.BankAccountValidator {
+func initProvider(app *gofr.App) paymentGateway {
 	mode := app.Config.GetOrDefault("PG_PROVIDER_MODE", "mock")
 
 	switch mode {
@@ -65,8 +76,7 @@ func initPGProvider(app *gofr.App) pg_provider.BankAccountValidator {
 		)
 
 		return xendit.NewClient(xendit.Config{
-			APIKey:         app.Config.Get("PG_PROVIDER_LIVE_API_KEY"),
-			APISecret:      app.Config.Get("PG_PROVIDER_LIVE_API_SECRET"),
+			SecretKey:      app.Config.Get("PG_PROVIDER_LIVE_API_SECRET"),
 			RetryMax:       intFromConfig(app, "RETRY_MAX", "2"),
 			RetryBaseDelay: time.Duration(intFromConfig(app, "RETRY_BASE_DELAY_MS", "500")) * time.Millisecond,
 			RetryMaxDelay:  time.Duration(intFromConfig(app, "RETRY_MAX_DELAY_MS", "5000")) * time.Millisecond,

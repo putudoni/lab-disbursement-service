@@ -3,8 +3,7 @@ package xendit
 import "time"
 
 type Config struct {
-	APIKey         string
-	APISecret      string
+	SecretKey      string
 	RetryMax       int
 	RetryBaseDelay time.Duration
 	RetryMaxDelay  time.Duration
